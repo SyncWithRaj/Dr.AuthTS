@@ -10,12 +10,14 @@ const Signup = () => {
   const { register } = useAuth();
 
   const [formData, setFormData] = useState({
+
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    role: 'USER'
   });
 
   const [loading, setLoading] = useState(false);
@@ -182,8 +184,28 @@ const Signup = () => {
               )}
             </div>
 
-            {/* Contact */}
-            <InputGroup icon={Phone} type="tel" placeholder="Mobile Number" value={formData.phone} onChange={(e: any) => setFormData({ ...formData, phone: e.target.value })} />
+
+            {/* Contact & Role */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <InputGroup icon={Phone} type="tel" placeholder="Mobile Number" value={formData.phone} onChange={(e: any) => setFormData({ ...formData, phone: e.target.value })} />
+
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <User className="h-5 w-5 text-gray-500 group-focus-within:text-indigo-400 transition-colors" />
+                </div>
+                <select
+                  className="w-full bg-gray-950/50 text-white pl-11 pr-4 py-3.5 rounded-xl border border-gray-800 focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 focus:bg-gray-900 transition-all outline-none font-medium appearance-none cursor-pointer"
+                  value={formData.role}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                >
+                  <option value="USER">User</option>
+                  <option value="ADMIN">Admin</option>
+                </select>
+                <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                </div>
+              </div>
+            </div>
 
             {/* Password Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

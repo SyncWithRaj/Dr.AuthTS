@@ -14,7 +14,8 @@ const router = express.Router();
 router.put('/profile', protect, uploadMiddleware, updateUserProfile);
 
 router.get('/profile', protect, getUserProfile);
-router.get('/', protect, getAllUsers);
+
+router.get('/', protect, admin, getAllUsers);
 router.get('/:id', protect, admin, getUserById);
 
 export default router;
