@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import passport from 'passport';
-import { register, login, sendOtp, forgotPassword, resetPassword, refreshToken, logout, verifyResetToken, sendTokenResponse } from '../controllers/auth.controller';
+import { register, login, sendOtp, forgotPassword, resetPassword, refreshToken, logout, verifyResetToken, sendTokenResponse, sendMagicLink, verifyMagicLink } from '../controllers/auth.controller';
 
 const router = express.Router();
 
@@ -12,6 +12,8 @@ router.post('/reset-password/:token', resetPassword);
 router.post('/refresh-token', refreshToken);
 router.post('/logout', logout);
 router.get('/verify-reset-token/:token', verifyResetToken);
+router.post('/send-magic-link', sendMagicLink);
+router.post('/verify-magic-link', verifyMagicLink);
 
 // --- SOCIAL DATA HANDLER ---
 // After Passport verifies user, we need to generate JWT cookies and redirect

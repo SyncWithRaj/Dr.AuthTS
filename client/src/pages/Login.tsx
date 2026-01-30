@@ -11,17 +11,33 @@ const Login = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
 
+  const [activeTab, setActiveTab] = useState<'password' | 'magic-link'>('password');
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleSubmit = async (e: any) => {
     e.preventDefault();
-    setLoading(true);
-    const result = await login(formData.email, formData.password);
-    if (result.success) {
-      toast.success('Access Granted');
-      navigate('/profile');
+    if (activeTab === 'password') {
+      setLoading(true);
+      const result = await login(formData.email, formData.password);
+      if (result.success) {
+        toast.success('Access Granted');
+        navigate('/profile');
+      } else {
+        toast.error(result.message || 'Authentication failed');
+        setLoading(false);
+      }
     } else {
-      toast.error(result.message || 'Authentication failed');
-      setLoading(false);
+      if (!formData.email) {
+        return toast.error("Please enter your email to receive a magic link");
+      }
+      const loadId = toast.loading("Sending magic link...");
+      try {
+        await api.post('/auth/send-magic-link', { email: formData.email });
+        toast.success("Magic link sent to your email!", { id: loadId });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } catch (error: any) {
+        toast.error(error.response?.data?.message || "Failed to send magic link", { id: loadId });
+      }
     }
   };
 
@@ -61,7 +77,7 @@ const Login = () => {
         <div className="bg-gray-900/40 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl ring-1 ring-white/5">
 
           {/* Social Login */}
-          <div className="grid grid-cols-2 gap-4 mb-8">
+          <div className="grid grid-cols-2 gap-4 mb-6">
             <a href="http://localhost:5000/api/auth/google" className="flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-white py-3 rounded-xl transition-all border border-white/5 hover:border-white/10 font-medium text-sm group">
               <svg className="w-5 h-5 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -79,14 +95,34 @@ const Login = () => {
             </a>
           </div>
 
-          <div className="relative flex items-center justify-center mb-8">
+          <div className="relative flex items-center justify-center mb-6">
             <div className="absolute w-full border-t border-white/10"></div>
-            <span className="relative px-3 bg-[#0d0d12] text-[10px] uppercase font-bold text-gray-500 tracking-widest">Or continue with email</span>
+            <span className="relative px-3 bg-[#0d0d12] text-[10px] uppercase font-bold text-gray-500 tracking-widest">Or continue with</span>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex p-1 bg-white/5 rounded-xl mb-6">
+            <button
+              type="button"
+              onClick={() => setActiveTab('password')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${activeTab === 'password' ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/5'
+                }`}
+            >
+              <Lock className="w-3 h-3" /> Password
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('magic-link')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${activeTab === 'magic-link' ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/5'
+                }`}
+            >
+              <Zap className="w-3 h-3" /> Magic Link
+            </button>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
 
-            {/* Email Field */}
+            {/* Email Field - Common */}
             <div className="space-y-2">
               <label className="text-[11px] uppercase tracking-widest font-bold text-gray-500 ml-1">Email Address</label>
               <div className="relative group">
@@ -103,27 +139,29 @@ const Login = () => {
               </div>
             </div>
 
-            {/* Password Field */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-center ml-1">
-                <label className="text-[11px] uppercase tracking-widest font-bold text-gray-500">Password</label>
-                <button type="button" onClick={handleForgotPassword} className="text-[11px] uppercase tracking-widest font-bold text-indigo-400 hover:text-indigo-300 transition-colors">
-                  Forgot Password?
-                </button>
-              </div>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-500 group-focus-within:text-indigo-400 transition-colors" />
+            {/* Password Field - Only for Password Tab */}
+            {activeTab === 'password' && (
+              <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="flex justify-between items-center ml-1">
+                  <label className="text-[11px] uppercase tracking-widest font-bold text-gray-500">Password</label>
+                  <button type="button" onClick={handleForgotPassword} className="text-[11px] uppercase tracking-widest font-bold text-indigo-400 hover:text-indigo-300 transition-colors">
+                    Set/Forgot Password?
+                  </button>
                 </div>
-                <input
-                  type="password"
-                  className="w-full bg-gray-950/50 text-white pl-11 pr-4 py-4 rounded-xl border border-gray-800 focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 focus:bg-gray-900 transition-all outline-none placeholder:text-gray-700 font-medium font-mono tracking-widest"
-                  placeholder="••••••••"
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  required
-                />
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Lock className="h-5 w-5 text-gray-500 group-focus-within:text-indigo-400 transition-colors" />
+                  </div>
+                  <input
+                    type="password"
+                    className="w-full bg-gray-950/50 text-white pl-11 pr-4 py-4 rounded-xl border border-gray-800 focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 focus:bg-gray-900 transition-all outline-none placeholder:text-gray-700 font-medium font-mono tracking-widest"
+                    placeholder="••••••••"
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    required
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Submit Button */}
             <button
@@ -134,9 +172,11 @@ const Login = () => {
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
-                <>
-                  Connect <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </>
+                activeTab === 'password' ? (
+                  <>Connect <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" /></>
+                ) : (
+                  <>Send Magic Link <Zap className="w-4 h-4 group-hover:scale-110 transition-transform text-white" /></>
+                )
               )}
             </button>
           </form>

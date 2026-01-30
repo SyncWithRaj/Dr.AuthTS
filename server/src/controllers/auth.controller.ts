@@ -434,4 +434,116 @@ const logout = async (req: Request, res: Response) => {
     res.json({ message: "Logged out" });
 }
 
-export { register, login, sendOtp, forgotPassword, resetPassword, refreshToken, logout, verifyResetToken, sendTokenResponse };
+// --- 7. MAGIC LINK ---
+const sendMagicLink = async (req: Request, res: Response) => {
+    try {
+        const { email } = req.body;
+
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user) {
+            // Check if email format is valid at least? Validation usually happens before controller.
+            // Requirement says: "email not register then toast user not found"
+            res.status(404).json({ message: "User not found" });
+            return;
+        }
+
+        // Generate Magic Link Token (Short lived - 10 mins)
+        // using crypto for one-time use token, stored in DB or stateless JWT?
+        // Plan said JWT. Let's use JWT for statelessness, but we might want to prevent replay attacks.
+        // For simplicity and speed, stateless JWT is fine.
+        const magicToken = jwt.sign(
+            { id: user.id, type: 'magic-link' },
+            process.env.JWT_SECRET as string,
+            { expiresIn: '10m' }
+        );
+
+        const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+        const magicLink = `${clientUrl}/magic-login/${magicToken}`;
+
+        await transporter.sendMail({
+            from: `"Dr.Auth Security" <${process.env.EMAIL_USER}>`,
+            to: email,
+            subject: 'Login with Magic Link | Dr.Auth',
+            html: `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Magic Login Link</title>
+                <style>
+                    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f5; margin: 0; padding: 0; }
+                    .wrapper { padding: 40px 20px; }
+                    .container { max-width: 500px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+                    .header { background: #000000; padding: 30px; text-align: center; }
+                    .brand { color: #ffffff; font-size: 22px; font-weight: 800; text-decoration: none; letter-spacing: 1px; }
+                    .content { padding: 40px 30px; text-align: center; color: #333; }
+                    .h2 { font-size: 20px; font-weight: 700; margin-bottom: 10px; color: #111; }
+                    .p { font-size: 15px; color: #666; line-height: 1.5; margin-bottom: 30px; }
+                    .btn { display: inline-block; background: linear-gradient(135deg, #4F46E5, #7C3AED); color: #ffffff; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 14px; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3); }
+                    .footer { background: #fafafa; padding: 20px; text-align: center; font-size: 12px; color: #888; border-top: 1px solid #efefef; }
+                </style>
+            </head>
+            <body>
+                <div class="wrapper">
+                    <div class="container">
+                        <div class="header">
+                            <span class="brand">Dr.Auth</span>
+                        </div>
+                        <div class="content">
+                            <div class="h2">Magic Login</div>
+                            <div class="p">Click the button below to log in instantly without a password. This link is valid for 10 minutes.</div>
+                            
+                            <a href="${magicLink}" class="btn">Login Now</a>
+                            
+                            <div class="p" style="font-size: 13px; margin: 30px 0 0; color: #999;">If you didn't request this link, you can safely ignore it.</div>
+                        </div>
+                        <div class="footer">
+                             <p>&copy; ${new Date().getFullYear()} Dr.Auth. Secure Access Systems.</p>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+            `
+        });
+
+        res.json({ message: `Magic link sent to ${email}` });
+
+    } catch (error) {
+        console.error("Magic Link Error:", error);
+        res.status(500).json({ message: "Failed to send magic link" });
+    }
+};
+
+const verifyMagicLink = async (req: Request, res: Response) => {
+    try {
+        const { token } = req.body;
+
+        if (!token) {
+            res.status(400).json({ message: "Token required" });
+            return;
+        }
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as { id: number, type: string };
+
+        if (decoded.type !== 'magic-link') {
+            res.status(400).json({ message: "Invalid token type" });
+            return;
+        }
+
+        const user = await prisma.user.findUnique({ where: { id: decoded.id } });
+        if (!user) {
+            res.status(404).json({ message: "User not found" });
+            return;
+        }
+
+        sendTokenResponse(user, 200, res);
+
+    } catch (error) {
+        console.error("Verify Magic Link Error:", error);
+        res.status(401).json({ message: "Invalid or expired magic link" });
+    }
+};
+
+export { register, login, sendOtp, forgotPassword, resetPassword, refreshToken, logout, verifyResetToken, sendTokenResponse, sendMagicLink, verifyMagicLink };

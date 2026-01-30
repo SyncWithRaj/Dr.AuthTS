@@ -6,6 +6,7 @@ import { AuthProvider } from './context/AuthContext';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ResetPassword from './pages/ResetPassword';
+import MagicLoginVerify from './pages/MagicLoginVerify';
 
 // Layout & Protection
 import Layout from './components/Layout';
@@ -27,6 +28,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/reset-password/:token" element={<ResetPassword />} />
+            <Route path="/magic-login/:token" element={<MagicLoginVerify />} />
           </Route>
 
           {/* Private Routes (Wrapped in Layout) */}
@@ -41,7 +43,7 @@ function App() {
           <Route path="*" element={<Navigate to="/login" />} />
         </Routes>
       </AuthProvider>
-    </BrowserRouter>
+    </BrowserRouter >
   );
 }
 
