@@ -50,10 +50,17 @@ passport.use(new GoogleStrategy({
             }
 
             // Create New User
+            const email = profile.emails ? profile.emails[0].value : `google_${profile.id}@no-email.com`;
+            // Generate basic loginId from email or ID. We might need a collision check logic ideally, 
+            // but for now, let's assume specific format or timestamp to minimize collision.
+            // Using google_ID as loginId seems safe/unique enough for social users.
+            const loginId = `google_${profile.id}`;
+
             user = await prisma.user.create({
                 data: {
                     googleId: profile.id,
-                    email: profile.emails ? profile.emails[0].value : `google_${profile.id}@no-email.com`, // Fallback
+                    email, // Fallback
+                    loginId,
                     firstName: profile.name?.givenName || profile.displayName,
                     lastName: profile.name?.familyName || "",
                     password: "", // User with no password (social login)
@@ -105,10 +112,14 @@ passport.use(new GitHubStrategy({
             }
 
             // Create New User
+            const finalEmail = email || `github_${profile.id}@no-email.com`;
+            const loginId = `github_${profile.username || profile.id}`;
+
             user = await prisma.user.create({
                 data: {
                     githubId: profile.id,
-                    email: email || `github_${profile.id}@no-email.com`, // Fallback
+                    email: finalEmail, // Fallback
+                    loginId,
                     firstName: profile.displayName || profile.username || 'User',
                     lastName: "",
                     password: "",

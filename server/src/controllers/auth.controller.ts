@@ -158,7 +158,7 @@ const sendOtp = async (req: Request, res: Response) => {
 // --- 2. REGISTER ---
 const register = async (req: Request, res: Response) => {
     try {
-        const { firstName, lastName, email, password, phone, role, otp } = req.body;
+        const { firstName, lastName, email, loginId, password, phone, role, otp } = req.body;
 
         const storedData = otpStore.get(email);
         if (!storedData) {
@@ -175,16 +175,28 @@ const register = async (req: Request, res: Response) => {
             return;
         }
 
-        const existingUser = await prisma.user.findUnique({ where: { email } });
+        const existingUser = await prisma.user.findFirst({
+            where: {
+                OR: [
+                    { email },
+                    { loginId }
+                ]
+            }
+        });
+
         if (existingUser) {
-            res.status(400).json({ message: "Email already exists" });
+            if (existingUser.email === email) {
+                res.status(400).json({ message: "Email already exists" });
+            } else {
+                res.status(400).json({ message: "Login ID already taken" });
+            }
             return;
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const newUser = await prisma.user.create({
-            data: { firstName, lastName, email, password: hashedPassword, phone, role: role || 'USER' }
+            data: { firstName, lastName, email, loginId, password: hashedPassword, phone, role: role || 'USER' }
         });
 
         otpStore.delete(email);
@@ -200,9 +212,16 @@ const register = async (req: Request, res: Response) => {
 // --- 3. LOGIN ---
 const login = async (req: Request, res: Response) => {
     try {
-        const { email, password } = req.body;
+        const { identifier, password } = req.body;
 
-        const user = await prisma.user.findUnique({ where: { email } });
+        const user = await prisma.user.findFirst({
+            where: {
+                OR: [
+                    { email: identifier },
+                    { loginId: identifier }
+                ]
+            }
+        });
         if (!user) {
             res.status(400).json({ message: "Invalid credentials" });
             return;
@@ -236,8 +255,17 @@ const login = async (req: Request, res: Response) => {
 // --- 4. FORGOT PASSWORD ---
 const forgotPassword = async (req: Request, res: Response) => {
     try {
-        const { email } = req.body;
-        const user = await prisma.user.findUnique({ where: { email } });
+        const { email, identifier } = req.body;
+        const searchParam = identifier || email; // Support both
+
+        const user = await prisma.user.findFirst({
+            where: {
+                OR: [
+                    { email: searchParam },
+                    { loginId: searchParam }
+                ]
+            }
+        });
 
         if (!user) {
             res.status(404).json({ message: "User not found" });
@@ -250,7 +278,7 @@ const forgotPassword = async (req: Request, res: Response) => {
         const resetPasswordExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
 
         await prisma.user.update({
-            where: { email },
+            where: { id: user.id },
             data: { resetPasswordToken, resetPasswordExpires }
         });
 
@@ -258,7 +286,7 @@ const forgotPassword = async (req: Request, res: Response) => {
 
         await transporter.sendMail({
             from: `"Dr.Auth Security" <${process.env.EMAIL_USER}>`,
-            to: email,
+            to: user.email,
             subject: 'Reset Your Password | Dr.Auth',
             html: `
             <!DOCTYPE html>
@@ -437,9 +465,17 @@ const logout = async (req: Request, res: Response) => {
 // --- 7. MAGIC LINK ---
 const sendMagicLink = async (req: Request, res: Response) => {
     try {
-        const { email } = req.body;
+        const { email, identifier } = req.body;
+        const searchParam = identifier || email;
 
-        const user = await prisma.user.findUnique({ where: { email } });
+        const user = await prisma.user.findFirst({
+            where: {
+                OR: [
+                    { email: searchParam },
+                    { loginId: searchParam }
+                ]
+            }
+        });
         if (!user) {
             // Check if email format is valid at least? Validation usually happens before controller.
             // Requirement says: "email not register then toast user not found"
@@ -462,7 +498,7 @@ const sendMagicLink = async (req: Request, res: Response) => {
 
         await transporter.sendMail({
             from: `"Dr.Auth Security" <${process.env.EMAIL_USER}>`,
-            to: email,
+            to: user.email,
             subject: 'Login with Magic Link | Dr.Auth',
             html: `
             <!DOCTYPE html>
@@ -508,7 +544,7 @@ const sendMagicLink = async (req: Request, res: Response) => {
             `
         });
 
-        res.json({ message: `Magic link sent to ${email}` });
+        res.json({ message: `Magic link sent to ${user.email}` });
 
     } catch (error) {
         console.error("Magic Link Error:", error);

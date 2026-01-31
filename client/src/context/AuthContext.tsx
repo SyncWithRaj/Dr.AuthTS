@@ -44,9 +44,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     });
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (identifier: string, password: string) => {
     try {
-      const { data } = await api.post<AuthResponse>('/auth/login', { email, password });
+      const { data } = await api.post<AuthResponse>('/auth/login', { identifier, password });
       // Cookies are set by backend automatically
       localStorage.setItem('user', JSON.stringify(data.user));
       setUser(data.user);

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
-import { User, Mail, Lock, Phone, ArrowRight, CheckCircle2, KeyRound } from 'lucide-react';
+import { User, Mail, Lock, Phone, ArrowRight, CheckCircle2, KeyRound, AtSign, Check, X } from 'lucide-react';
 import api from '../utils/api';
 
 const Signup = () => {
@@ -13,6 +13,7 @@ const Signup = () => {
 
     firstName: '',
     lastName: '',
+    loginId: '',
     email: '',
     phone: '',
     password: '',
@@ -23,7 +24,6 @@ const Signup = () => {
   const [loading, setLoading] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState('');
-  const [strengthLevel, setStrengthLevel] = useState(0);
   const [timer, setTimer] = useState(0);
 
   useEffect(() => {
@@ -36,15 +36,25 @@ const Signup = () => {
     return () => clearInterval(interval);
   }, [otpSent, timer]);
 
-  // Password Strength Logic
+  const [passwordCriteria, setPasswordCriteria] = useState({
+    length: false,
+    upper: false,
+    lower: false,
+    special: false
+  });
+
+  // Password Requirement Logic
   useEffect(() => {
-    let score = 0;
-    if (formData.password.length > 6) score++;
-    if (formData.password.length > 10) score++;
-    if (/[0-9]/.test(formData.password)) score++;
-    if (/[^A-Za-z0-9]/.test(formData.password)) score++;
-    setStrengthLevel(score);
+    const pwd = formData.password;
+    setPasswordCriteria({
+      length: pwd.length >= 8,
+      upper: /[A-Z]/.test(pwd),
+      lower: /[a-z]/.test(pwd),
+      special: /[!@#$%^&*(),.?":{}|<>]/.test(pwd)
+    });
   }, [formData.password]);
+
+  const isPasswordValid = Object.values(passwordCriteria).every(Boolean);
 
   const handleSendOtp = async () => {
     if (!formData.email) return toast.error("Please enter email first");
@@ -65,6 +75,10 @@ const Signup = () => {
 
     if (formData.password !== formData.confirmPassword) {
       return toast.error("Passwords do not match");
+    }
+
+    if (!isPasswordValid) {
+      return toast.error("Please meet all password requirements");
     }
 
     if (!otpSent || otp.length !== 6) {
@@ -132,6 +146,8 @@ const Signup = () => {
               <InputGroup icon={User} placeholder="First Name" value={formData.firstName} onChange={(e: any) => setFormData({ ...formData, firstName: e.target.value })} />
               <InputGroup icon={User} placeholder="Last Name" value={formData.lastName} onChange={(e: any) => setFormData({ ...formData, lastName: e.target.value })} />
             </div>
+
+            <InputGroup icon={AtSign} placeholder="Login ID (Unique Username)" value={formData.loginId} onChange={(e: any) => setFormData({ ...formData, loginId: e.target.value })} />
 
             {/* Email & OTP Section */}
             <div className="bg-gray-800/30 rounded-2xl p-4 border border-white/5 space-y-4">
@@ -211,11 +227,15 @@ const Signup = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <InputGroup icon={Lock} type="password" placeholder="Create Password" value={formData.password} onChange={(e: any) => setFormData({ ...formData, password: e.target.value })} />
-                {/* Micro Strength Indicator */}
-                <div className="flex gap-1 h-1 px-1">
-                  {[1, 2, 3, 4].map(i => (
-                    <div key={i} className={`flex-1 rounded-full transition-all duration-300 ${i <= strengthLevel ? (strengthLevel > 2 ? 'bg-emerald-500' : 'bg-yellow-500') : 'bg-gray-800'}`} />
-                  ))}
+                {/* Detailed Password Strength Checklist */}
+                <div className="mt-2 p-3 bg-gray-900/50 rounded-xl border border-gray-800 space-y-2">
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-2">Password Requirements:</p>
+                  <div className="grid grid-cols-1 gap-1">
+                    <RequirementItem label="Min 8 characters" met={passwordCriteria.length} />
+                    <RequirementItem label="At least 1 Uppercase" met={passwordCriteria.upper} />
+                    <RequirementItem label="At least 1 Lowercase" met={passwordCriteria.lower} />
+                    <RequirementItem label="At least 1 Special Char" met={passwordCriteria.special} />
+                  </div>
                 </div>
               </div>
               <div className="space-y-2">
@@ -225,7 +245,7 @@ const Signup = () => {
 
             <button
               type="submit"
-              disabled={loading || !otpSent}
+              disabled={loading || !otpSent || !isPasswordValid}
               className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white py-4 rounded-xl font-bold text-sm tracking-wide transition-all transform active:scale-[0.98] shadow-lg shadow-indigo-900/20 flex items-center justify-center gap-2 mt-4 disabled:opacity-50 disabled:cursor-not-allowed group"
             >
               {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> :
@@ -260,6 +280,13 @@ const InputGroup = ({ icon: Icon, type = "text", placeholder, value, onChange }:
       onChange={onChange}
       required
     />
+  </div>
+);
+
+const RequirementItem = ({ label, met }: { label: string, met: boolean }) => (
+  <div className={`flex items-center gap-2 text-xs font-medium transition-colors ${met ? 'text-green-400' : 'text-gray-500'}`}>
+    {met ? <Check size={12} className="text-green-400" /> : <X size={12} />}
+    {label}
   </div>
 );
 

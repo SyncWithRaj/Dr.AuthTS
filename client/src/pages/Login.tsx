@@ -8,7 +8,7 @@ import api from '../utils/api';
 const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const [formData, setFormData] = useState({ email: '', password: '' });
+  const [formData, setFormData] = useState({ identifier: '', password: '' });
   const [loading, setLoading] = useState(false);
 
   const [activeTab, setActiveTab] = useState<'password' | 'magic-link'>('password');
@@ -18,7 +18,7 @@ const Login = () => {
     e.preventDefault();
     if (activeTab === 'password') {
       setLoading(true);
-      const result = await login(formData.email, formData.password);
+      const result = await login(formData.identifier, formData.password);
       if (result.success) {
         toast.success('Access Granted');
         navigate('/profile');
@@ -27,12 +27,12 @@ const Login = () => {
         setLoading(false);
       }
     } else {
-      if (!formData.email) {
-        return toast.error("Please enter your email to receive a magic link");
+      if (!formData.identifier) {
+        return toast.error("Please enter your email or login ID to receive a magic link");
       }
       const loadId = toast.loading("Sending magic link...");
       try {
-        await api.post('/auth/send-magic-link', { email: formData.email });
+        await api.post('/auth/send-magic-link', { identifier: formData.identifier });
         toast.success("Magic link sent to your email!", { id: loadId });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (error: any) {
@@ -42,12 +42,12 @@ const Login = () => {
   };
 
   const handleForgotPassword = async () => {
-    if (!formData.email) {
+    if (!formData.identifier) {
       return toast.error("Please enter your email address first");
     }
     const loadId = toast.loading("Sending reset link...");
     try {
-      await api.post('/auth/forgot-password', { email: formData.email });
+      await api.post('/auth/forgot-password', { identifier: formData.identifier });
       toast.success("Reset link sent!", { id: loadId });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
@@ -122,18 +122,21 @@ const Login = () => {
 
           <form onSubmit={handleSubmit} className="space-y-6">
 
-            {/* Email Field - Common */}
+            {/* Email/Login Field - Common */}
             <div className="space-y-2">
-              <label className="text-[11px] uppercase tracking-widest font-bold text-gray-500 ml-1">Email Address</label>
+              <label className="text-[11px] uppercase tracking-widest font-bold text-gray-500 ml-1">
+                {activeTab === 'password' ? 'Email or Login ID' : 'Email or Login ID'}
+              </label>
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <Mail className="h-5 w-5 text-gray-500 group-focus-within:text-indigo-400 transition-colors" />
                 </div>
                 <input
-                  type="email"
+                  type="text"
                   className="w-full bg-gray-950/50 text-white pl-11 pr-4 py-4 rounded-xl border border-gray-800 focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 focus:bg-gray-900 transition-all outline-none placeholder:text-gray-700 font-medium"
-                  placeholder="name@company.com"
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="name@company.com or username"
+                  onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
+                  value={formData.identifier}
                   required
                 />
               </div>

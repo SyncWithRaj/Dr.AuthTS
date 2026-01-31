@@ -1,6 +1,7 @@
 export interface User {
     id: number;
     email: string;
+    loginId?: string;
     firstName: string;
     lastName: string;
     role: 'ADMIN' | 'USER';
@@ -24,7 +25,7 @@ export interface AuthContextType {
     loading: boolean;
     setUser: React.Dispatch<React.SetStateAction<User | null>>;
     updateUser: (newData: Partial<User>) => void;
-    login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
+    login: (identifier: string, password: string) => Promise<{ success: boolean; message?: string }>;
     register: (userData: any) => Promise<{ success: boolean; message?: string }>;
     logout: (callApi?: boolean) => Promise<void>;
 }
